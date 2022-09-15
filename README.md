@@ -1,7 +1,7 @@
 # WalkingBass
 This MuseScore 3 plugin generates a walking bass line, based on the chords in the selected staff.
 
-Given a particular chord, a pattern of notes is chosen to insert for the chord's duration.  More on patterns can be found in the Patterns.md  
+Given a particular chord, a pattern of notes is chosen to insert for the chord's duration.  More on patterns can be found in the [Patterns](https://github.com/philxan/WalkingBass/edit/main/Patterns.md) documentation.
 
 The user can choose whether to generate:
 * The lowest note used. Typically this will be E2 (open E string on a double bass - midi 28) 
@@ -52,7 +52,14 @@ To use the plugin:
 1. Select the staff where you want the walking bass line to be generated.  This should have a bass clef, and needs to have chords to generate the walking bass line for. 
 1. click Apply
 
-To download the plugin from this web page:
-1. Click on WalkingBass.zip (above)
+To download the plugin from this web page, use one of two methods below:
+1. Click on WalkingBass.zip (above). This includes the plugin and all associated documentation
 1. On the resulting page, click the button "Download", just above the text
+1. Follow the installation steps above. 
+
+or. 
+1. Click on WalkingBass.qml (above). This is just the plugin, without any documentation, and is recommended only for advanved MuseScore users.
+1. On the resulting page, click the button "Download", just above the text
+1. Create a subdirectory for WalkingBass in the MuseScore Plugins folder, and copy the WalkingBass.qml file there. 
+1. Restart MuseScore, and enable the pluginl
 
