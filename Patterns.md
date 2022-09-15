@@ -49,6 +49,15 @@ However, in a chord progression such as Dm7 to G7, the "1-3-5-b" pattern would r
 * "D-F-A-F# | G" 
 
 
+ToDo:
+----
+Quarter notes only 
+
+v approach note
+approach notes in teh middle (1-b-2-5) etc. 
+Adjusting so not repeating a note
+
+non-root pattersn
 
 
 
