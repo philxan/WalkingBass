@@ -11,7 +11,7 @@ import QtQuick.Controls.Styles 1.3
 // WalkingBass
 // A plugin to compose a reasonable walking bass line, based on Chords
 //
-// (C) Phil Kan
+// (C) 2022 Phil Kan 
 // PitDad Music. All Rights Reserved. 
 // 
 // Restrictions / Assumptions / Checks
@@ -50,9 +50,10 @@ MuseScore
 //=============================================================================
 // configuration options. These can be set in the UI
   
-  property int lowestPitch: 28            // E below C below C below middle C (concert)
+  property var lowestPitchText: "E1"      // E below C below C below middle C (concert)
+  property var lowestPitch: 28
   property var octaveRange: 2.5           // octave range to use
-  property var flipFifthPercentage: 30    // percentage chance that a 4th, tritone or 5th will be flipped
+  property var flipPercentage: 10         // percentage chance that the next note is not the closest in the octave
   
   property bool includePatternText: true  // if true, then the current pattern is written beneath the first note
   property bool useSlashes: false         // if true write notes as stemless slashes. if false, writes as actual notes
@@ -79,9 +80,9 @@ MuseScore
       TextField 
       {
         id: lowestPitchField
-	visible: true
+	  visible: true
         implicitHeight: 24
-        placeholderText: lowestPitch
+        placeholderText: lowestPitchText
         horizontalAlignment: TextInput.AlignRight
         Keys.onReturnPressed: isValidLowestNote()
       }
@@ -92,7 +93,7 @@ MuseScore
 	  visible : true
         Layout.columnSpan:2
         font.italic: true
-        text: "Lowest pitch available. Typically E2 (28)"
+        text: "Lowest pitch available, from C0 to B4.\n(Typically E1)"
         bottomPadding: 10
       }
 
@@ -116,10 +117,37 @@ MuseScore
       Label 
       {
         id: octaveRangeLabelHelp
-	visible : true
+	  visible : true
         Layout.columnSpan:2
         font.italic: true
         text: "Range in octaves. Typically 2, 2.5 or 3"
+        bottomPadding: 10
+      }
+      
+      Label 
+      {
+        id: flipPercentageLabel
+	  visible : true
+        text: "Flip Percentage"
+      }
+      
+      TextField 
+      {
+        id: flipPercentageField
+  	  visible: true
+        implicitHeight: 24
+        placeholderText: flipPercentage
+        horizontalAlignment: TextInput.AlignRight
+        Keys.onReturnPressed: isValidFlipPercentage()
+      }
+      
+      Label 
+      {
+        id: flipPercentageLabelHelp
+	  visible : true
+        Layout.columnSpan:2
+        font.italic: true
+        text: "Percentage that a 3rd, 4th, 5th, or 6th\nis flipped from being closest"
         bottomPadding: 10
       }
 
@@ -183,26 +211,60 @@ MuseScore
     }
     
 //=============================================================================
+
    function isValidLowestNote()
    {
-     if (! (/^\d+$/.test(lowestPitchField.text)) ) 
+     if (!(/^[A-G]{1}(b|#)?[0-4]{1}$/.test(lowestPitchField.text)) ) 
      {
+       inputError.text = "Lowest pitch must be a valid note & octave. e.g. E3"
        inputError.open();
      }
      
-     lowestPitch = parseInt(lowestPitchField.text);
+     parseLowestNote();
+   }
+   
+//=============================================================================
+
+   function parseLowestNote()
+   {     
+     var idx = 0;
+     var adjustPitch = 0;
+     
+     var root = lowestPitchField.text[idx].toUpperCase();
+     idx++;
+
+     // could be #or b as well.. 
+     if ('#b'.includes(lowestPitchField.text[idx]))
+     { 
+       adjustPitch = lowestPitchField.text[idx] == "b" ? -1 : 1; 
+       idx++; 
+     } 
+
+     var octave = parseInt(lowestPitchField.text[idx]);
+     lowestPitch = c0 + (12 * octave) + letterToSemitone[root] + adjustPitch;
+     
    }
     
-    function isValidOctaveRange()
-    {
+//=============================================================================
+
+   function isValidOctaveRange()
+   {
      if (!(/^(\d)*(\.)?([0-9]{1})?$/.test(octaveRangeField.text)) ) 
      {
+       inputError.text = "Range must be a number from 0 to 4."
        inputError.open();
        return;
      }
      
      octaveRange = parseFloat(octaveRangeField.text);
-    }
+     
+     if (octaveRange > 4)
+     {
+       inputError.text = "Range must be a number from 0 to 4."
+       inputError.open();
+       return;
+     }
+   }
     
     function isValidNonRootPercent()
     {
@@ -249,7 +311,11 @@ MuseScore
   property var intervalToSemitone: {'1':0, '2':2, '3':4, '4':5, '5':7, '6':9, '7':11};
     
   // from E below C below middle C
-  property var letterToSemitone: {'E': 0, 'F': 1, 'G': 3, 'A': 5, 'B': 7, 'C': 8, 'D': 10};
+  // property var letterToSemitone: {'E': 0, 'F': 1, 'G': 3, 'A': 5, 'B': 7, 'C': 8, 'D': 10};
+
+  // Now based on C0
+  property var letterToSemitone: {'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11};
+  property var c0: 12               // midi for C0
 
   // [b]elow, [a]bove [v]fifth
   property var approachSemitones: { "B": -2, "b": -1, "a": 1, "A": 2, "v": 7 };
@@ -271,21 +337,24 @@ MuseScore
   ]
   
   property var patterns:
-  [
+  [ 
+    "1-a-3-1", "1-a-3-5", "1-a-3-a", "1-a-3-b", "1-a-3-v", 
     "1-b-2-1", "1-b-2-3", "1-b-2-a", "1-b-2-b", "1-b-2-v",
     "1-1-3-5", "1-1-3-a", "1-1-3-b", "1-1-3-v",
     "1-1-5-1", "1-1-5-3", "1-1-5-5", "1-1-5-a", "1-1-5-b", "1-1-5-v",
     "1-2-3-1", "1-2-3-5", "1-2-3-a", "1-2-3-b", "1-2-3-v",
+
     "1-3-1-5", "1-3-1-7", "1-3-1-a", "1-3-1-b", "1-3-1-v",
     "1-3-5-1", "1-3-5-7", "1-3-5-a", "1-3-5-b", "1-3-5-v",
     "1-3-6-1", "1-3-6-7", "1-3-6-a", "1-3-6-b", "1-3-6-v",
+  
     "1-5-1-5", "1-5-1-3", "1-5-1-a", "1-5-1-b", "1-5-1-v",
     "1-5-3-1", "1-5-3-5", "1-5-3-a", "1-5-3-b", "1-5-3-v",
     "1-5-5-1", "1-5-5-3", "1-5-5-a", "1-5-5-b", "1-5-5-v",
     "1-5-7-1", "1-5-7-5", "1-5-7-a", "1-5-7-b", "1-5-7-v",
-    "1-6-7-1", "1-6-7-3", "1-6-7-6", "1-6-7-5", "1-6-7-1", "1-6-7-b", "1-6-7-v",
     "1-6-5-3", "1-6-5-6", "1-6-5-a", "1-6-5-b", "1-6-5-v",
-    "1-7-6-5", "1-7-6-3", "1-7-6-a", "1-7-6-b", "1-7-6-v", 
+    "1-6-7-1", "1-6-7-3", "1-6-7-6", "1-6-7-5", "1-6-7-1", "1-6-7-b", "1-6-7-v",
+    "1-7-6-7", "1-7-6-5", "1-7-6-3", "1-7-6-1", "1-7-6-a", "1-7-6-b", "1-7-6-v", 
     "1-7-5-7", "1-7-5-6", "1-7-5-3", "1-7-5-a", "1-7-5-b", "1-7-5-v",
   ]
   
@@ -297,11 +366,10 @@ MuseScore
     "3-a-1-1", "3-a-1-5", "3-a-1-7", "3-a-1-a", "3-a-1-b", "3-a-1-v", 
     "3-b-1-1", "3-b-1-5", "3-b-1-7", "3-b-1-a", "3-b-1-b", "3-b-1-v", 
     "5-3-1-1", "5-3-1-5", "5-3-1-7", "5-3-1-a", "5-3-1-b", "5-3-1-v", 
-//    "7-5-3-1", "7-5-1-1", "7-1-3-5", "5-3-1-a", "5-3-1-b", "5-3-1-v", 
   ]  
   
-  property int quarterNoteDuration: 480
-  
+  property int quarterNoteDuration: division;
+
   property int previousPitch: -1;
   property var approachPattern: "";
   property var approachTick: 0;  
@@ -351,10 +419,12 @@ MuseScore
     previousPitch = -1;
     approachPattern = "";
     approachTick = 0;  
-    
 
-    lowestPitch = parseInt(lowestPitchField.text);
+    parseLowestNote();
     octaveRange = parseFloat(octaveRangeField.text);
+    highestPitch = lowestPitch + (12 * octaveRange);   
+    flipPercentage = parseInt(flipPercentageField.text);
+
     includePatternText = includePatternTextCheck.checked;
     useSlashes = useSlashesCheck.checked;
     useNonRootPatterns = useNonRootPatternsCheck.checked;
@@ -831,21 +901,6 @@ console.log(chordSymbol.text + ":"
       return newPitch;
     }
 
-      // if the new pitch is a fifth above, randomly lower it 
-    if ((newPitch - previousPitch == 7) && 
-        (lowestPitch < newPitch-12) && 
-        (Math.floor(Math.random() * 100) < flipFifthPercentage)) 
-    {
-      newPitch -= 12;
-    }
-    // if its a 4th below, then randomly raise it
-    else if ((previousPitch - newPitch == 5) && 
-             (newPitch + 12 < highestPitch) && 
-             (Math.floor(Math.random() * 100) < flipFifthPercentage))
-    {
-      newPitch += 12;
-    }
-    
     // new note is more than a 5th below, so raise it up
     if (previousPitch - newPitch > 7)
     {
@@ -858,7 +913,15 @@ console.log(chordSymbol.text + ":"
       while (newPitch - previousPitch > 7) newPitch -= 12;
     }
     
-    return newPitch;
+    // if the new pitch is from a minor third to a sixth, randomly flip the interval
+    var diff = Math.abs(newPitch - previousPitch);
+    if ((3 <= diff && diff <= 9) && (Math.floor(Math.random() * 100) < flipPercentage))
+    {
+      newPitch += (newPitch < previousPitch) ? 12 : -12
+console.log("flipping!");
+    }
+      
+    return newPitch;  
   }
   
 //=============================================================================
@@ -868,7 +931,7 @@ console.log(chordSymbol.text + ":"
   function ensurePitchIsInRange(notePitch)
   {
         while (highestPitch < notePitch) notePitch -=12;
-        while (notePitch  < lowestPitch) notePitch += 12;
+        while (notePitch < lowestPitch) notePitch += 12;
         
         return notePitch;
   }
@@ -951,7 +1014,7 @@ console.log(chordSymbol.text + ":"
   // given a note letter (e.g. "E"), return the lowest pitch in range. 
   function getLetterPitch(letter)
   {
-    var pitch = lowestPitch + letterToSemitone[letter[0]];
+    var pitch = letterToSemitone[letter[0]];
     
     // adjust for b or #
     if (letter.length > 1) 
@@ -959,6 +1022,8 @@ console.log(chordSymbol.text + ":"
       pitch += (letter[1] == "b") ?  -1 : 1    // if its not a flat, its a sharp
     }
 
+    while (pitch < lowestPitch) { pitch += 12; }
+    
     return pitch;     
   }
   
@@ -976,6 +1041,8 @@ console.log(chordSymbol.text + ":"
   {
     var beforeTick = cursor.tick;
     cursor.addNote(pitch, false);
+console.log("addNote: " + pitch)    
+    
       
     // transform it into a slash if required
     if (useSlashes)
@@ -1059,8 +1126,9 @@ console.log(chordSymbol.text + ":"
     approachPattern = "";
     approachTick = 0; 
     
-    lowestPitchField.text = lowestPitch;
+    lowestPitchField.text = lowestPitchText;
     octaveRangeField.text = octaveRange;
+    flipPercentageField.text = flipPercentage;
     
     includePatternTextCheck.checked = includePatternText;
     useSlashesCheck.checked = useSlashes;
