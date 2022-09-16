@@ -1,16 +1,19 @@
-# WalkingBass
+WalkingBass
+===========
 This MuseScore 3 plugin generates a walking bass line, based on the chords in the selected staff.
 
 Given a particular chord, a pattern of notes is chosen to insert for the chord's duration.  More information about the usage of patterns in walking bass lines can be found in the [Patterns](https://github.com/philxan/WalkingBass/edit/main/Patterns.md) documentation.
 
 The user can choose whether to generate:
-* The lowest note used. Typically this will be E2 (open E string on a double bass - midi 28) 
+* The lowest note used. Typically this will be E1 (open E string on a double bass - midi 28) 
 * The range of notes used, specified in octaves. (Default as 2.5, although 3 is also a good choice)
+* How frequently to use a larger interval spaced interval, rather the closest one
 * Whether to include the pattern being used
 * Whether to convert the generated notes to slashes ( "/" ), as would typically be written in a jazz chart
-* Whether to use patterns that do not begin on the root of the chord. 
+* Whether to use patterns that do not begin on the root of the chord, and how frequently
 
-
+Usage
+-----
 To use this plugin, select bars in a single staff that contains chord symbols. Only one staff can be selected: selecting multiple staves an error message will be displayed and no notes will be inserted. Likewise, if no chord symbols are detected error message will be displayed and no notes will be inserted. 
 
 All generated notes are added to voice 1 of the selected staff. Any existing notes in that voice in that staff will be overwritten.
@@ -24,7 +27,7 @@ minor, min, mi, m, -, − | Dmi, D-9
 dim, o, ° | Ebdim, E°7
 ø, O, 0 | Abø7
 aug, + | Db+
-t, Δ, ∆, ^ | C∆7
+t, ∆, ^ | C∆7
 69, | G69
 *number* | C7, E13
 (Major, major, Maj, maj, Ma, ma, M, j *number*) | Cmi(ma7)
@@ -36,6 +39,8 @@ b*number* ... | C7b5b9
 
 You may enclose parts of the chord symbol in parentheses, for example "C9(#5)".
 
+Installation
+-------------
 To install the plugin:
 1. Download the file WalkingBass.zip
 1. Expand the zip file. The result is a folder "WalkingBass"
@@ -62,4 +67,13 @@ or.
 1. On the resulting page, click the button "Download", just above the text
 1. Create a subdirectory for WalkingBass in the MuseScore Plugins folder, and copy the WalkingBass.qml file there. 
 1. Restart MuseScore, and enable the pluginl
+
+Configuration Options
+---------------------
+
+#Range Options#
+
+## Display Options
+
+## Non-Root patterns
 
