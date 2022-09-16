@@ -70,10 +70,28 @@ or.
 
 Configuration Options
 ---------------------
+The following configuration options are displayed in the Walking Bass panel
 
-#Range Options#
+**Lowest Note**
+This is the loweset note that will be generated, expressed as a midinote. The default is 'E1' (midi note 28) which is the open E string of a double bass or bass guitar. This is the E below C, below middle C on the piano. It is the E below the bass clef staff. Rarely should this need to be changed. If writing for a 5-string bass with a bottom B string, specify B0. 
 
-## Display Options
+**Octave Range**
+How many octaves the generated lines may span. It is not guaranteed that the entire range will be used. Typically 2, 2.5, or 3 octaves will generate sufficiently interesting lines. 
 
-## Non-Root patterns
+**Flip Percentage**
+This is the percentage chance that a note will be "flipped" from being the closest interval. It only applies to notes from the minor third to the major sixth. The second and the seventh will always be the notes that are closest to the root. 
+For example, when a pattern specifies to play the root then the third, this will typically be the third _above_ the root, as that is closest.  However this could also be "flipped" to be the third _below_ the root - essentially an interval of a 6th. Keeping this value a small results in smoother lines, with some wider variations. A higher value will result in more widely jumping bass lines. 
+
+**Include Pattern Text**
+If selected, then the pattern being used will be written as text below the first note of the pattern. 
+
+**Use Slashes instead of notes**
+If selected, then notes will not be displayed. Instead they will displayed as stemless slashes: " / ".  This does not affect playback - the notes will be played as generated. This option creates scores that are more usually found in jazz charts for bass players. 
+
+**Use non-root patterns**
+If selected then patterns that do not begin on the root will also be considered. 
+
+**Non Roots %**
+This is only relevant if _Use non-root patterns_ is selected.  It is the percentage chance that a pattern that does not being root is selected for use. 0% means that non-root patterns will never be used. 100% means that non-root patterns will _always_ be used. 
+
 
