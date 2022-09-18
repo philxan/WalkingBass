@@ -58,7 +58,7 @@ MuseScore
   property bool includePatternText: true  // if true, then the current pattern is written beneath the first note
   property bool useSlashes: false         // if true write notes as stemless slashes. if false, writes as actual notes
   property bool useNonRootPatterns: false // if true use patterns that don't start on the root
-  property int  nonRootPercent: 10        // percentage to use non root patterns
+  property int  nonRootPercent: 30        // percentage to use non root patterns
   
 //=============================================================================
 // Layout
@@ -325,6 +325,8 @@ MuseScore
     // doubling up on some root & approach note versions so they have a greater chance of getting used
     "1-1", "1-3", "1-5", "1-6", "1-7",
            "1-3", "1-5",        "1-7",
+           "1-3", "1-5",        "1-7",
+    "1-a", "1-b", "1-v",
     "1-a", "1-b", "1-v",
     "1-a", "1-b", "1-v", 
   ]
