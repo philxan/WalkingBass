@@ -4,11 +4,16 @@ WalkingBass uses various patterns to randomaly generate the walking bass line. T
 
 The Basics
 ----------
+WalkingBass creates a random walking bass line, based on the chords provided and a randomly selected pattern. Only quarter notes (crotchets) are used, as is common in these lines. Skips, triplets and other ornamentations are not considered at this time. 
+
+The chords symbols recognised are included in the main [ReadMe](https://github.com/philxan/WalkingBass/blob/main/ReadMe.md) doucmentation. 
+
 A _pattern_ is a series of numbers that represent the scale degrees to be played, relative to the current chord. Given the pattern "1-2-3-5", "1" indicates the root, "2", the second degree of the scale, "3", the third, and "5" the fifth. If the current chord is a C, and the given pattern is "1-2-3-5", then the notes C, D, E, and G would be played, in that order.  Note that in this case, the _major_ scale is implied, and the current key signature is NOT taken into account. 
+
+Patterns are provided for 2 beats and 4 beats - typically a full bar, or a half a bar (where there are two chords in the same bar). If a chord lasts only for one beat, then the root is always played. If the chord lasts for longer than 4 beats, the multiple 4 beat patters are used, until the required length is reached. 
 
 How Chords are Interpretted
 ---------------------------
-
 For major chords, the major scale is natirally implied. If the chord is a 7, 9, or 13, the 7th degree is flattened so that it is interpretted as a dominant chord. 
 
 For minor chords, the flat third (b3) and flat seventh (b7) are implied (the dorian mode). So, a pattern such as "1-3-5-7" for a Dm chord would generate the notes D, F, A, C.
@@ -38,23 +43,31 @@ It is usual for walking bass line to use an _appraoch note_ of a semitone (halfs
 
 Wwalking bass uses the values "a", "b", & "v" to indicate to use an approach note above, below, or the fifth of the target chord. 
 
-For example, if the chord progression is a from C7 to F7, the bass line might use a pattern such as "1-3-5-a", resulting in:
-* "C-E-G-F# | F" 
+For example, if the chord progression is a from C7 to F7, the bass line might use a pattern such as "1-3-5-**a**", resulting in:
+* C-E-G-**F#** | F 
 
-Or using an approach note below, such as "1-3-5-b"
-* "C-E-G-E | F" 
+Or using an approach note below, such as "1-3-5-**b**"
+* C-E-G-**E** | F 
 Note that in this case, the "E" is both the third of the C chord, as well as a semitone below approach note. Two different patterns may result in the same notes for a given chord. 
 
 However, in a chord progression such as Dm7 to G7, the "1-3-5-b" pattern would result in:
-* "D-F-A-F# | G" 
+* D-F-A-F# | G 
+
+The _a_ and _b_ approach notes are sometimes included in the middle of the pattern. A typical exmample is the common pattern "1-b-2-5" For a C7 this would result in the notes: 
+* C-Db-D-G
+
+The _a_ and _b_ approach notes are also very commonly used in a two beat pattern, together with the root. This provides very common walking lines for turn-arounds and rhythm changes. For example. considering the chord progression | C  Am7 | Dm7  G7 | C  :
+* Using the pattern "1-a" exclusively: | C **B**  A **Eb** | D **Ab** G **Db** | C
+* Using the pattern "1-b" exclusively: | C **G#** A **D#** | D **F#** G **B**  | C
+
+In reality, WalkingBass would randomly chose a pattern for each chord, so it is much more likely that a combination of patterns are chosen. 
+
+The **v** approach note indicates to play a fifth away from the target note. Typically this is only used as the last note in a pattern, so that is leads strongly into the next chord. Given the chord progression | Cm7 | Eb , and the pattern 1-2-3-v:
+* C-D-E-**Bb** | Eb
 
 
 ToDo:
 ----
-Quarter notes only 
-
-v approach note
-approach notes in teh middle (1-b-2-5) etc. 
 Adjusting so not repeating a note
 
 non-root pattersn
