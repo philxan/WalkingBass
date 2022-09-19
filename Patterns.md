@@ -6,7 +6,7 @@ The Basics
 ----------
 WalkingBass creates a random walking bass line, based on the chords provided and a randomly selected pattern. Only quarter notes (crotchets) are used, as is common in these lines. Skips, triplets and other ornamentations are not considered at this time. 
 
-The chords symbols recognised are included in the main [ReadMe](https://github.com/philxan/WalkingBass/blob/main/ReadMe.md) doucmentation. 
+The chords symbols recognised are included in the main [ReadMe](https://github.com/philxan/WalkingBass/blob/main/README.md) doucmentation. 
 
 A _pattern_ is a series of numbers that represent the scale degrees to be played, relative to the current chord. Given the pattern "1-2-3-5", "1" indicates the root, "2", the second degree of the scale, "3", the third, and "5" the fifth. If the current chord is a C, and the given pattern is "1-2-3-5", then the notes C, D, E, and G would be played, in that order.  Note that in this case, the _major_ scale is implied, and the current key signature is NOT taken into account. 
 
