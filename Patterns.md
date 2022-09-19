@@ -65,12 +65,39 @@ In reality, WalkingBass would randomly chose a pattern for each chord, so it is 
 The **v** approach note indicates to play a fifth away from the target note. Typically this is only used as the last note in a pattern, so that is leads strongly into the next chord. Given the chord progression | Cm7 | Eb , and the pattern 1-2-3-v:
 * C-D-E-**Bb** | Eb
 
+**Note:** Sometimes the last bar in the generated line will use a pattern that ends in an approach note. This will result in the line being incomplete, as there is no target note for the approach note reference. In this case, a note will note be inserted, and the final beat in the last bar will be a quarter-note rest. 
 
-ToDo:
-----
-Adjusting so not repeating a note
+Non-Root Patters
+-----
+Some patterns that do not begin on the root of the chord are also available. If you want WalkingBass to consider these, ensure the "Use non-root patterns" checkbox is ticked. The text box "Non-Roots %" indicates the percentage chance that a non-root pattern will be used. The default value is 30%. 
 
-non-root pattersn
+Non-root patterns are included for both 2-beat and 4-beat patterns. These start on a chord tone - the third or the fifth (and less frequently the 7th). They also contain the approach notes as described above.
 
+For example using the 4beat non-root pattern 3-2-1-a, for all chords in the  Dm | G7 | C  chord progression, would generate the following notes:
+* F-E-D-C | B-A-G-F | E-D-C-
+Over the Dm chord, F-E-D is played as the third, second and root, followed by a semitone above approach note. Since the target note is the third of the G chord - a B - the approach note is a C. 
 
+The 'v' approach note is still a fifth away from the target note, even though this may not be the root of the target chord. Using the same chord progression (Dm | G7 | C), the and the pattern 3-2-1-**v**:
+* F-E-D-F | B-A-G-B | E-D-C-
 
+Adjustments
+-----
+WalkingBass makes various adjustments to notes to attempt to ensure a smooth, logical walking bass line. 
+
+_The last note_ of chord's pattern may be adjusted up or down to ensure it is not the same as the first note of the next chord's pattern. This ensure's that the distinction between chords is maintained. For example, for the chord progression Dm | G7, and the patterns chosen are 1-2-3-1, and 5-3-1-7 this would result in
+* D-E-F-D | D-B-G-F
+Note the repeated D at the end of the Dm and the start of the G do not clearly mark the transition from one chord to the next. WalkingBass will adjust the note at the end of the first pattern randomly up or down to ensure a smoother transition
+* D-E-F-Eb | D-B-G-F
+
+_Intervals_ may be flipped, to provide some variation, whilst keeping the same pattern. How frequently this occurs is controlled by the Flip Percentage option. WalkingBass is naturally take the note that is the closest interval. For example, the pattern "1-3-5-1" will be generated as an ascending arpeggio. The intervals between each of the notes in the pattern will be smallest they can be. This will ensure a smooth line, however it can easily result in a line that climbs quickly, or becomes frequently boring. As an alternative, WalkingBass may invert any interval of between a (minor) third and sixth.  In the 1-3-5-1 pattern, the third might be played _below_ the root instead of above it. Likewise the final root note might be played below the fifth. 
+
+The _lowest note_ and _range_ options will also naturally adjust notes so they are in the range specified. Out of necessity this can sometimes result in unnatural lines. The lowest note is generally taken as the E below the bass stave. Any notes below this will be raised by an octave, so they are in the playable range. Likewise, any notes above the playable range will be adjusted down an octave. 
+
+Final Thoughts
+-----
+Given the description above, WalkingBass can do an adequate job of generating a random walking bass line over a given chord progression. Given the randomness, a differnet line will be generated each time. Several attempts might be required before a line is generated that meets the user's needs.  The initial generation may not be perfect, and some notes or bars may well require manual adjustment so they make logical sense. However in the majority of cases WalkingBass should provide a good enough initial line. 
+
+If you have any comments or suggestions for further improvements, please don't hesitate to contact me. 
+
+Phil Kan (pitdadphil@gmail.com)
+September, 2022.
