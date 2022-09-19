@@ -94,4 +94,7 @@ If selected then patterns that do not begin on the root will also be considered.
 **Non Roots %**
 This is only relevant if _Use non-root patterns_ is selected.  It is the percentage chance that a pattern that does not being root is selected for use. 0% means that non-root patterns will never be used. 100% means that non-root patterns will _always_ be used. 
 
+If you have any comments or suggestions for further improvements, please don't hesitate to contact me. 
 
+Phil Kan (pitdadphil@gmail.com)
+September, 2022.
