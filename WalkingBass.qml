@@ -6,13 +6,14 @@ import QtQuick.Controls 1.1
 import QtQuick.Controls.Styles 1.3
 
 //=============================================================================
-// MuseScore 3.6
+// MuseScore 4.1
 //
 // WalkingBass
 // A plugin to compose a reasonable walking bass line, based on Chords
 //
 // (C) 2022 Phil Kan 
 // PitDad Music. All Rights Reserved. 
+// (C) 2023 Joachim Schmitz, port to Mu4
 // 
 // Restrictions / Assumptions / Checks
 // - 4/4 time
@@ -35,11 +36,19 @@ import QtQuick.Controls.Styles 1.3
 
 MuseScore 
 {
-  version: "3.0"
+  version: "4.1"
   menuPath: "Plugins.WalkingBass"
   description: "This plugin creates generates a walking bass line."
   
-  pluginType: "dock";
+  Component.onCompleted : {
+    if (mscoreMajorVersion >= 4) {
+      title = qsTr("WalkingBass") ;
+      // thumbnailName = ".png";
+      // categoryCode = "some_category";
+    }
+  }
+
+  pluginType: mscoreMajorVersion >= 4 ? "dialog" : "dock";
   dockArea: "left";
   implicitHeight: 560;
   implicitWidth: 240;
@@ -298,7 +307,7 @@ MuseScore
     title: qsTr("Unsupported MuseScore Version")
     text: qsTr("This plugin needs MuseScore 3.3 or later")
     onAccepted: {
-      Qt.quit()
+      (typeof(quit) === 'undefined' ? Qt.quit : quit)()
     }
   }
   
@@ -1142,10 +1151,10 @@ console.log("addNote: " + pitch)
 
   onRun: 
   {
-    if ((mscoreMajorVersion < 3) || (mscoreMinorVersion < 3)) 
+    if ((mscoreMajorVersion < 3) || ((mscoreMajorVersion == 3 && mscoreMinorVersion < 3 ))) 
     {
       versionError.open()
-      Qt.quit();
+      (typeof(quit) === 'undefined' ? Qt.quit : quit)()
       return;
     }
     
