@@ -1,6 +1,6 @@
 WalkingBass
 ===========
-This MuseScore 3 plugin generates a walking bass line, based on the chords in the selected staff.
+This MuseScore 3.3+ & 4.x plugin generates a walking bass line, based on the chords in the selected staff.
 
 Given a particular chord, a pattern of notes is chosen to insert for the chord's duration.  More information about the usage of patterns in walking bass lines can be found in the [Patterns](https://github.com/philxan/WalkingBass/blob/main/Patterns.md) documentation.
 
