@@ -1,18 +1,20 @@
-import QtQuick 2.2
 import MuseScore 3.0
-import QtQuick.Layouts 1.1
-import QtQuick.Dialogs 1.1
-import QtQuick.Controls 1.1
-import QtQuick.Controls.Styles 1.3
+import QtQuick 2.9
+import QtQuick.Controls 2.2
+import QtQuick.Layouts 1.2
+import QtQuick.Dialogs 1.2
+import Qt.labs.settings 1.0
 
 //=============================================================================
-// MuseScore 3.6
+// MuseScore 3.3+
+// MuseScore 4.x
 //
-// WalkingBass
+// WalkingBass v1.2
 // A plugin to compose a reasonable walking bass line, based on Chords
 //
-// (C) 2022 Phil Kan 
+// (C) 2023 Phil Kan 
 // PitDad Music. All Rights Reserved. 
+// With thanks to xxx for initial MuseScore 4 implementation
 // 
 // Restrictions / Assumptions / Checks
 // - 4/4 time
@@ -31,252 +33,331 @@ import QtQuick.Controls.Styles 1.3
 // - Optionally turn the notes into slashes. Will still play as expected, but appear as a '/'
 // - Optionally also include patterns that don't start on the root (e.g. 3-2-1-a)
 //
+// - todo: Add patterns for 2 bars (8 beats) of the one chord... 
+//
+// Change History
+// v1.0 - initial release
+// v1.1 - Fixed height of panel. Added octave jumps for x-x in a pattern
+// v1.2 - Added Support for MuseScore 4.x, as a dialog, 
+//      - 
+//
 //=============================================================================
 
 MuseScore 
 {
-  version: "3.0"
+  version: "1.2"
   menuPath: "Plugins.WalkingBass"
-  description: "This plugin creates generates a walking bass line."
+  description: "This plug-in generates a walking bass line for given chord changes."
   
-  pluginType: "dock";
+  Component.onCompleted : {
+    if (mscoreMajorVersion >= 4) {
+      title = qsTr("Walking Bass");
+      thumbnailName = "WalkingBassIcon.png";
+      categoryCode = qsTr("PitDad Tools");
+    }
+  }
+  
+  pluginType: mscoreMajorVersion >= 4 ? "dialog" : "dock";
   dockArea: "left";
-  implicitHeight: 560;
-  implicitWidth: 240;
-  
-  width:  240
-  height: 560
+  implicitHeight: 480;
+  implicitWidth: 260;
+ 
 
 //=============================================================================
 // configuration options. These can be set in the UI
   
   property var lowestPitchText: "E1"      // E below C below C below middle C (concert)
   property var lowestPitch: 28
-  property var octaveRange: 2.5           // octave range to use
-  property var flipPercentage: 10         // percentage chance that the next note is not the closest in the octave
-  
+  property var octaveRange: 2.5          // octave range to use
+  property var flipPercent: 10            // percentage chance that the next note is 
+                                          // not the closest in the octave
+                                          
   property bool includePatternText: true  // if true, then the current pattern is written beneath the first note
   property bool useSlashes: false         // if true write notes as stemless slashes. if false, writes as actual notes
   property bool useNonRootPatterns: false // if true use patterns that don't start on the root
-  property int  nonRootPercent: 30        // percentage to use non root patterns
-  
+  property int  nonRootPercent: 10        // percentage to use non root patterns
+  property int  octavesPercent: 50        // when an interval is repeated in a pattern, 
+                                          // the percentage chance it will jump an octave
+                                          
 //=============================================================================
 // Layout
 //
-    GridLayout 
+  GridLayout 
+  {
+    id: 'walkingBassMainLayout'
+    columns: 2
+    anchors.fill: parent
+    anchors.margins: 10
+
+    Label 
     {
-      id: 'walkingBassMainLayout'
-      anchors.fill: parent
-      anchors.margins: 10
-      columns: 2
-
-      Label 
-      {
-        id: lowestPitchLabel
-	visible : true
-        text: "Lowest Pitch"
-      }
-        
-      TextField 
-      {
-        id: lowestPitchField
-	  visible: true
-        implicitHeight: 24
-        placeholderText: lowestPitchText
-        horizontalAlignment: TextInput.AlignRight
-        Keys.onReturnPressed: isValidLowestNote()
-      }
-
-      Label 
-      {
-        id: lowestPitchFieldHelp
-	  visible : true
-        Layout.columnSpan:2
-        font.italic: true
-        text: "Lowest pitch available, from C0 to B4.\n(Typically E1)"
-        bottomPadding: 10
-      }
-
-      Label 
-      {
-        id: octaveRangeLabel
-	  visible : true
-        text: "Octave Range"
-      }
-        
-      TextField 
-      {
-        id: octaveRangeField
-  	  visible: true
-        implicitHeight: 24
-        placeholderText: octaveRange
-        horizontalAlignment: TextInput.AlignRight
-        Keys.onReturnPressed: isValidOctaveRange()
-      }
-        
-      Label 
-      {
-        id: octaveRangeLabelHelp
-	  visible : true
-        Layout.columnSpan:2
-        font.italic: true
-        text: "Range in octaves. Typically 2, 2.5 or 3"
-        bottomPadding: 10
-      }
-      
-      Label 
-      {
-        id: flipPercentageLabel
-	  visible : true
-        text: "Flip Percentage"
-      }
-      
-      TextField 
-      {
-        id: flipPercentageField
-  	  visible: true
-        implicitHeight: 24
-        placeholderText: flipPercentage
-        horizontalAlignment: TextInput.AlignRight
-        Keys.onReturnPressed: isValidFlipPercentage()
-      }
-      
-      Label 
-      {
-        id: flipPercentageLabelHelp
-	  visible : true
-        Layout.columnSpan:2
-        font.italic: true
-        text: "Percentage that a 3rd, 4th, 5th, or 6th\nis flipped from being closest"
-        bottomPadding: 10
-      }
-
-      CheckBox 
-      {
-        id: includePatternTextCheck
-        Layout.columnSpan:2
-        text: "Include Pattern Text"
-        checked: includePatternText
-      }        
-        
-      CheckBox 
-      {
-        id: useSlashesCheck
-        Layout.columnSpan:2
-        text: "Use slashes instead of notes"
-        checked: useSlashes
-      }        
-
-      CheckBox 
-      {
-        id: useNonRootPatternsCheck
-        Layout.columnSpan:2
-        text: "Use non-root patterns"
-        checked: useNonRootPatterns
-      }        
-      
-      Label 
-      {
-        id: nonRootPercentageLabel
-	  visible : true
-        text: "Non roots %"
-      }
-        
-      TextField 
-      {
-        id: nonRootPercentField
-  	  visible: true
-        implicitHeight: 24
-        placeholderText: nonRootPercent
-        horizontalAlignment: TextInput.AlignRight
-        Keys.onReturnPressed: isValidNonRootPercent()
-      }
-      
-        
-      Button 
-      {
-        id: applyButton
-	visible: true
-        Layout.columnSpan:2
-        text: qsTranslate("PrefsDialogBase", "Apply")
-        onClicked: applyBassLine()
-      }
-        
-      Label 
-      {
-        id: errorLabel
-	  visible: false
-        Layout.columnSpan:2
-      }
+      id: lowestPitchLabel
+      text: "Lowest Pitch"
     }
+        
+    TextField 
+    {
+      id: lowestPitchField
+      placeholderText: lowestPitchText
+      horizontalAlignment: TextInput.AlignRight
+      Keys.onReturnPressed: isValidLowestNote()
+    }
+      
+    Label 
+    {
+      id: lowestPitchFieldHelp
+      Layout.columnSpan:2
+      font.italic: true
+      text: "Lowest pitch available, from C0 to B4.\n(Typically E1)"
+      bottomPadding: 10
+    }
+
+    Label 
+    {
+      id: octaveRangeLabel
+      text: "Octave Range"
+    }
+        
+    TextField 
+    {
+      id: octaveRangeField
+      implicitHeight: 24
+      placeholderText: octaveRange
+      horizontalAlignment: TextInput.AlignRight
+      Keys.onReturnPressed: isValidOctaveRange()
+    }
+        
+    Label 
+    {
+      id: octaveRangeLabelHelp
+      Layout.columnSpan:2
+      font.italic: true
+      text: "Range in octaves. Typically 2, 2.5 or 3"
+      bottomPadding: 10
+    }
+
+    Label 
+    {
+      id: flipPercentLabel
+      text: "Flip Percentage"
+    }
+      
+    TextField 
+    {
+      id: flipPercentField
+      implicitHeight: 24
+      placeholderText: flipPercent
+      horizontalAlignment: TextInput.AlignRight
+      Keys.onReturnPressed: isValidFlipPercent()
+    }
+      
+    Label 
+    {
+      id: flipPercentLabelHelp
+      Layout.columnSpan: 2
+      font.italic: true
+      text: "Percentage that a 3rd, 4th, 5th, or 6th\nis furthest not closest"
+      bottomPadding: 10
+    }
+
+    CheckBox 
+    {
+      id: includePatternTextCheck
+      Layout.columnSpan: 2
+      text: "Patterns"
+      checked: includePatternText
+    }
+      
+    Label 
+    {
+      id: includePatternTextHelp
+      Layout.columnSpan:2
+      font.italic: true
+      text: "Include the pattern text below the first note"
+      bottomPadding: 10
+    }
+    
+    CheckBox 
+    {
+      id: useSlashesCheck
+      Layout.columnSpan:2
+      text: "Slashes"
+      checked: useSlashes
+    }
+      
+    Label 
+    {
+      id: useSlashesHelp
+      font.italic: true
+      bottomPadding: 10
+      text: "Use slashes instead of notes"
+      Layout.columnSpan:2
+    }
+
+    Label 
+    {
+      id: useNonRootPatternslabel
+      text: "Use non-root patterns (%)"
+    }        
+             
+    TextField 
+    {
+      id: nonRootPercentField
+      placeholderText: nonRootPercent
+      horizontalAlignment: TextInput.AlignRight
+      Keys.onReturnPressed: isValidNonRootPercent()
+    }
+      
+    Label
+    {
+      id: octavesPercentLabel
+      text: "Repeat-note Octaves (%)"
+    }        
+             
+    TextField 
+    {
+      id: octavesPercentField
+      placeholderText: octavesPercent
+      horizontalAlignment: TextInput.AlignRight
+      Keys.onReturnPressed: isValidOctavesPercent()
+    }
+        
+    Button 
+    {
+      id: applyButton
+      Layout.columnSpan: 2
+      text: qsTranslate("PrefsDialogBase", "Apply")
+      onClicked: applyBassLine()
+    }
+        
+    Label 
+    {
+      id: errorLabel
+      visible: false
+      Layout.columnSpan:2
+    }
+  }
     
 //=============================================================================
 
-   function isValidLowestNote()
-   {
-     if (!(/^[A-G]{1}(b|#)?[0-4]{1}$/.test(lowestPitchField.text)) ) 
-     {
-       inputError.text = "Lowest pitch must be a valid note & octave. e.g. E3"
-       inputError.open();
-     }
-     
-     parseLowestNote();
-   }
+  function isValidLowestNote()
+  {
+    if (!(/^[A-G]{1}(b|#)?[0-4]{1}$/.test(lowestPitchField.text)) ) 
+    {
+      inputError.text = "Lowest pitch must be a valid note & octave. e.g. E3"
+      inputError.open();
+    }
+   
+    parseLowestNote();
+  }
+ 
+//=============================================================================
+
+  function parseLowestNote()
+  {     
+    var idx = 0;
+    var adjustPitch = 0;
+   
+    var root = lowestPitchField.text[idx].toUpperCase();
+    idx++;
+
+    // could be #or b as well.. 
+    if ('#b'.includes(lowestPitchField.text[idx]))
+    { 
+      adjustPitch = lowestPitchField.text[idx] == "b" ? -1 : 1; 
+      idx++; 
+    } 
+
+    var octave = parseInt(lowestPitchField.text[idx]);
+    lowestPitch = c0 + (12 * octave) + letterToSemitone[root] + adjustPitch;
+  }
+    
+//=============================================================================
+
+  function isValidOctaveRange()
+  {
+    if (!(/^(\d)*(\.)?([0-9]{1})?$/.test(octaveRangeField.text)) ) 
+    {
+      displayError("Octave Range must be a number from 0 to 4.");
+      return false;
+    }
+
+    octaveRange = parseFloat(octaveRangeField.text);
+   
+    if (octaveRange > 4)
+    { 
+      displayError("Octave Range must be a number from 0 to 4.");
+      return false;
+    }
+   
+    return true;
+  }
+    
+  function isValidFlipPercent()
+  {
+    if (! (/^\d+$/.test(flipPercentField.text) )) 
+    {
+     displayError("Not a valid Non-roots percentage.\nUse a whole number between 0 and 100 ");
+     return false;
+    }
+
+    flipPercent = parseInt(flipPercentField.text);
+   
+    if (flipPercent < 0 || flipPercent > 100)
+    {
+      displayError("Not a valid Non-roots percentage.\nUse a whole number between 0 and 100 ");
+      return false;
+    }
+   
+    return true;
+  }
+   
+   
+  function isValidNonRootPercent()
+  {
+    if (! (/^\d+$/.test(nonRootPercentField.text)) ) 
+    {
+      displayError("Not a valid Non-roots percentage.\nUse a whole number between 0 and 100 ");
+      return false;
+    } 
+
+    nonRootPercent = parseInt(nonRootPercentField.text);
+   
+    if (nonRootPercent < 0 || nonRootPercent > 100)
+    {
+      displayError("Not a valid Non-roots percentage.\nUse a whole number between 0 and 100 ");
+      return false;
+    }
+   
+    return true;
+  }
+
+  function isValidOctavesPercent()
+  {
+    if (! (/^\d+$/.test(octavesPercentField.text)) ) 
+    {
+      displayError("Not a valid flip percentage.\nUse a whole number between 0 and 100 ");
+      return false;
+    }
+   
+    octavesPercent = parseInt(octavesPercentField.text);
+   
+    if (octavesPercent < 0 || octavesPercent > 100) 
+    {
+      displayError("Not a valid flip percentage.\nUse a whole number between 0 and 100 ");
+      return false;
+    }
+   
+    return true;
+  }
    
 //=============================================================================
 
-   function parseLowestNote()
-   {     
-     var idx = 0;
-     var adjustPitch = 0;
-     
-     var root = lowestPitchField.text[idx].toUpperCase();
-     idx++;
-
-     // could be #or b as well.. 
-     if ('#b'.includes(lowestPitchField.text[idx]))
-     { 
-       adjustPitch = lowestPitchField.text[idx] == "b" ? -1 : 1; 
-       idx++; 
-     } 
-
-     var octave = parseInt(lowestPitchField.text[idx]);
-     lowestPitch = c0 + (12 * octave) + letterToSemitone[root] + adjustPitch;
-     
-   }
-    
-//=============================================================================
-
-   function isValidOctaveRange()
-   {
-     if (!(/^(\d)*(\.)?([0-9]{1})?$/.test(octaveRangeField.text)) ) 
-     {
-       inputError.text = "Range must be a number from 0 to 4."
-       inputError.open();
-       return;
-     }
-     
-     octaveRange = parseFloat(octaveRangeField.text);
-     
-     if (octaveRange > 4)
-     {
-       inputError.text = "Range must be a number from 0 to 4."
-       inputError.open();
-       return;
-     }
-   }
-    
-    function isValidNonRootPercent()
-    {
-     if (! (/^\d+$/.test(lowestPitchField.text)) ) 
-     {
-       inputError.open();
-       return;
-     }
-     nonRootPercent = parseInt(nonRootPercentField.text);
-    }
-
-//=============================================================================
+  function displayError(message)
+  {
+    inputError.text = message;
+    inputError.open();
+  }
 
   MessageDialog 
   {
@@ -298,7 +379,7 @@ MuseScore
     title: qsTr("Unsupported MuseScore Version")
     text: qsTr("This plugin needs MuseScore 3.3 or later")
     onAccepted: {
-      Qt.quit()
+      Qt.quit() 
     }
   }
   
@@ -310,16 +391,13 @@ MuseScore
   // based on the major scale
   property var intervalToSemitone: {'1':0, '2':2, '3':4, '4':5, '5':7, '6':9, '7':11};
     
-  // from E below C below middle C
-  // property var letterToSemitone: {'E': 0, 'F': 1, 'G': 3, 'A': 5, 'B': 7, 'C': 8, 'D': 10};
-
   // Now based on C0
   property var letterToSemitone: {'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11};
   property var c0: 12               // midi for C0
 
   // [b]elow, [a]bove [v]fifth
-  property var approachSemitones: { "B": -2, "b": -1, "a": 1, "A": 2, "v": 7 };
-  
+  property var approachSemitones: { "b": -1, "a": 1, "v": 7, };
+
   property var patterns2:
   [
     // doubling up on some root & approach note versions so they have a greater chance of getting used
@@ -333,13 +411,13 @@ MuseScore
 
   property var patterns2NonRoot:
   [
-    // doubling up on the approach notes so they have a greater chance of getting used
-    "3-1", "3-5", "3-a", "3-b", "3-v",
+    "3-1", "3-5", "3-a", "3-b", "3-v", 
     "5-1", "5-3", "5-a", "5-b", "5-v",
   ]
   
   property var patterns:
   [ 
+  
     "1-a-3-1", "1-a-3-5", "1-a-3-a", "1-a-3-b", "1-a-3-v", 
     "1-b-2-1", "1-b-2-3", "1-b-2-a", "1-b-2-b", "1-b-2-v",
     "1-1-3-5", "1-1-3-a", "1-1-3-b", "1-1-3-v",
@@ -352,22 +430,21 @@ MuseScore
   
     "1-5-1-5", "1-5-1-3", "1-5-1-a", "1-5-1-b", "1-5-1-v",
     "1-5-3-1", "1-5-3-5", "1-5-3-a", "1-5-3-b", "1-5-3-v",
-    "1-5-5-1", "1-5-5-3", "1-5-5-a", "1-5-5-b", "1-5-5-v",
     "1-5-7-1", "1-5-7-5", "1-5-7-a", "1-5-7-b", "1-5-7-v",
     "1-6-5-3", "1-6-5-6", "1-6-5-a", "1-6-5-b", "1-6-5-v",
     "1-6-7-1", "1-6-7-3", "1-6-7-6", "1-6-7-5", "1-6-7-1", "1-6-7-b", "1-6-7-v",
     "1-7-6-7", "1-7-6-5", "1-7-6-3", "1-7-6-1", "1-7-6-a", "1-7-6-b", "1-7-6-v", 
-    "1-7-5-7", "1-7-5-6", "1-7-5-3", "1-7-5-a", "1-7-5-b", "1-7-5-v",
+    "1-7-5-7", "1-7-5-6", "1-7-5-3", "1-7-5-a", "1-7-5-b", "1-7-5-v", 
   ]
   
   property var patternsNonRoot:
   [
-    "3-2-1-1", "3-2-1-5", "3-2-1-7", "3-2-1-a", "3-2-1-b", "3-2-1-v", 
-    "3-5-1-1", "3-5-1-5", "3-5-1-7", "3-5-1-a", "3-5-1-b", "3-5-1-v", 
+    "3-2-1-1", "3-2-1-5", "3-2-1-7", "3-2-1-a", "3-2-1-b", "3-2-1-v",
+    "3-5-1-1", "3-5-1-5", "3-5-1-7", "3-5-1-a", "3-5-1-b", "3-5-1-v",
     "3-7-1-1", "3-7-1-5", "3-7-1-7", "3-7-1-a", "3-7-1-b", "3-7-1-v", 
     "3-a-1-1", "3-a-1-5", "3-a-1-7", "3-a-1-a", "3-a-1-b", "3-a-1-v", 
-    "3-b-1-1", "3-b-1-5", "3-b-1-7", "3-b-1-a", "3-b-1-b", "3-b-1-v", 
-    "5-3-1-1", "5-3-1-5", "5-3-1-7", "5-3-1-a", "5-3-1-b", "5-3-1-v", 
+    "3-b-1-1", "3-b-1-5", "3-b-1-7", "3-b-1-a", "3-b-1-b", "3-b-1-v",
+    "5-3-1-1", "5-3-1-5", "5-3-1-7", "5-3-1-a", "5-3-1-b", "5-3-1-v",
   ]  
   
   property int quarterNoteDuration: division;
@@ -418,18 +495,22 @@ MuseScore
       return;
     }
     
+    if (!isValidOctaveRange()) return;
+    if (!isValidOctavesPercent()) return;
+    if (!isValidNonRootPercent()) return;
+    
     previousPitch = -1;
     approachPattern = "";
     approachTick = 0;  
 
     parseLowestNote();
+    
     octaveRange = parseFloat(octaveRangeField.text);
     highestPitch = lowestPitch + (12 * octaveRange);   
-    flipPercentage = parseInt(flipPercentageField.text);
+    flipPercent = parseInt(flipPercentField.text);
 
     includePatternText = includePatternTextCheck.checked;
     useSlashes = useSlashesCheck.checked;
-    useNonRootPatterns = useNonRootPatternsCheck.checked;
     nonRootPercent = parseInt(nonRootPercentField.text);
     
     // a random starting point
@@ -464,10 +545,11 @@ console.log("----------------------------------------");
   // bass: if its a slash chord, the bass note (after the slash)
   function parseChord(chord)
   {
-
     // letter
     var idx = 0;
     if ("()".includes(chord[idx])) idx++; // just ignore brackets!
+
+    console.log(idx + " - " + chord + " - " + chord[idx])
 
     var root = chord[idx].toUpperCase();
     idx++;
@@ -487,7 +569,7 @@ console.log("----------------------------------------");
           triadWord = triadWord + chord[idx++]
     }
 
-  switch (triadWord)
+    switch (triadWord)
     {
       case "":                                    // there is no triad type - just nothing, or straight to numbers
         if (idx == chord.length) {
@@ -585,7 +667,7 @@ console.log("----------------------------------------");
   // get a random pattern to use, based on the number of quarter notes required
   function getPattern(quarterNotes)
   {
-    var nonRoot = useNonRootPatterns && ((Math.floor(Math.random() * 100)) < nonRootPercent);
+    var nonRoot = (Math.random() * 100) < nonRootPercent
     
     if (quarterNotes == 1)
     {
@@ -714,7 +796,6 @@ console.log("----------------------------------------");
       // Get a random pattern to use, either in part or in whole
       var pattern = getPattern(quarterNotes);
 
-      
 console.log(chordSymbol.text + ":" 
       + (chordSymbol.text.length < 3 ? "\t" : "") + "\t"
       + pattern);
@@ -737,11 +818,11 @@ console.log(chordSymbol.text + ":"
         }
         
         var notePitch = -1;
-        if (j == 0 && chord.bass != "")               
+        if (j == 0 && chord.bass != "")            
         {
           // a specified bass note will be used as the first note
           notePitch = getLetterPitch(chord.bass)
-        }        
+        } 
         else 
         {
           notePitch = getIntervalPitch(rootPitch, pattern[j]);
@@ -754,16 +835,31 @@ console.log(chordSymbol.text + ":"
         // adjust the note octave so its the closest one to the previous note
         notePitch = adjustPitchToBeClosestToPreviousPitch(notePitch, previousPitch)
 
-        // make sure we haven't gone too far!
-        notePitch = ensurePitchIsInRange(notePitch)
-        
         // if this is the first note in the pattern, and there is no approach note
         // then avoid duplicating the previous pitch
         // this works by moving the previous pitch up or down
-        if (j == 0 && (approachPattern == "")) 
+        //if (j == 0 && (approachPattern == "")) 
+        //{
+        //  avoidFirstNoteIdenticalToLastNote(notePitch, previousPitch, cursor)
+        //}
+
+        // if we're duplicating a note, then, 
+        // if this is the first note of the pattern, then adjust the last note of last pattern
+        // otherwise scale it an octave as specified in the options
+        if (notePitch == previousPitch)
         {
-          avoidFirstNoteIdenticalToLastNote(notePitch, previousPitch, cursor)
+          if (j == 0) 
+          {
+            avoidFirstNoteIdenticalToLastNote(notePitch, previousPitch, cursor)
+          }
+          else if ((Math.random() * 100) < octavesPercent) 
+          {
+            notePitch += (Math.random() * 100) < 50 ? -12 : 12;
+          }
         }
+        
+        // make sure we haven't gone too far!
+        notePitch = ensurePitchIsInRange(notePitch)
         
         // handle the pending approach note
         // this might change the actual note, if its at the top or bottom of the range
@@ -917,10 +1013,9 @@ console.log(chordSymbol.text + ":"
     
     // if the new pitch is from a minor third to a sixth, randomly flip the interval
     var diff = Math.abs(newPitch - previousPitch);
-    if ((3 <= diff && diff <= 9) && (Math.floor(Math.random() * 100) < flipPercentage))
+    if ((3 <= diff && diff <= 9) && ((Math.random() * 100) < flipPercent))
     {
       newPitch += (newPitch < previousPitch) ? 12 : -12
-console.log("flipping!");
     }
       
     return newPitch;  
@@ -1043,8 +1138,6 @@ console.log("flipping!");
   {
     var beforeTick = cursor.tick;
     cursor.addNote(pitch, false);
-console.log("addNote: " + pitch)    
-    
       
     // transform it into a slash if required
     if (useSlashes)
@@ -1130,22 +1223,34 @@ console.log("addNote: " + pitch)
     
     lowestPitchField.text = lowestPitchText;
     octaveRangeField.text = octaveRange;
-    flipPercentageField.text = flipPercentage;
+    flipPercentField.text = flipPercent;
     
     includePatternTextCheck.checked = includePatternText;
     useSlashesCheck.checked = useSlashes;
-    useNonRootPatternsCheck.checked = useNonRootPatterns;
     nonRootPercentField.text = nonRootPercent;
+    octavesPercentField.text = octavesPercent;
   }  
 
 //=============================================================================
 
   onRun: 
   {
-    if ((mscoreMajorVersion < 3) || (mscoreMinorVersion < 3)) 
+    if (!   // MS 3.3 & higher, and MS 4.x are all supported. 
+      ((mscoreMajorVersion == 3 && mscoreMinorVersion >= 3) ||
+       (mscoreMajorVersion == 4)
+       ))
     {
       versionError.open()
-      Qt.quit();
+      
+      if (typeof(quit) === 'undefined') 
+      { 
+        Qt.quit() 
+      }
+      else 
+      { 
+        quit() 
+      }
+      
       return;
     }
     
@@ -1153,5 +1258,4 @@ console.log("addNote: " + pitch)
     
     setDefaults();
   }
-  
 }
