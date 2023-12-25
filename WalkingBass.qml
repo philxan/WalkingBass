@@ -14,7 +14,8 @@ import Qt.labs.settings 1.0
 //
 // (C) 2023 Phil Kan 
 // PitDad Music. All Rights Reserved. 
-// With thanks to xxx for initial MuseScore 4 implementation
+// With thanks to Jojo-Schmitz for initial MuseScore 4 implementation
+// See: https://github.com/Jojo-Schmitz/WalkingBass/tree/main
 // 
 // Restrictions / Assumptions / Checks
 // - 4/4 time
