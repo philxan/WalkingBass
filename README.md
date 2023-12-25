@@ -74,7 +74,7 @@ For example, when a pattern specifies to play the root then the third, this will
 **Pattern Text**
 If selected, then the pattern being used will be written as text below the first note of the pattern. 
 
-**Slashes instead of notes**
+**Slashes**
 If selected, then notes will not be displayed. Instead they will displayed as stemless slashes: " / ".  This does not affect playback - the notes will be played as generated. This option creates scores that are more usually found in jazz charts for bass players. 
 
 **Use non-root patterns (%)**
