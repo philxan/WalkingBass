@@ -161,11 +161,15 @@ MuseScore
       bottomPadding: 10
     }
 
+    Label 
+    {
+      id: includePatternTextLabel
+      text: "Patterns Text"
+    }
+    
     CheckBox 
     {
       id: includePatternTextCheck
-      Layout.columnSpan: 2
-      text: "Patterns"
       checked: includePatternText
     }
       
@@ -178,11 +182,15 @@ MuseScore
       bottomPadding: 10
     }
     
+    Label 
+    {
+      id: useSlashesLabel
+      text: "Slashes"
+    }
+    
     CheckBox 
     {
       id: useSlashesCheck
-      Layout.columnSpan:2
-      text: "Slashes"
       checked: useSlashes
     }
       
