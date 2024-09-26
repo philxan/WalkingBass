@@ -1,26 +1,22 @@
-import MuseScore 3.0
-import QtQuick 2.9
-import QtQuick.Controls 2.2
-import QtQuick.Layouts 1.2
-import QtQuick.Dialogs 1.2
-import Qt.labs.settings 1.0
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+
+import MuseScore
+import Muse.UiComponents
 
 //=============================================================================
-// MuseScore 3.3+
-// MuseScore 4.x
+// MuseScore 4.4+
 //
-// WalkingBass v1.2
+// WalkingBass v4.4
 // A plugin to compose a reasonable walking bass line, based on Chords
 //
-// (C) 2023 Phil Kan 
+// (C) 2024 Phil Kan 
 // PitDad Music. All Rights Reserved. 
 // With thanks to Jojo-Schmitz for initial MuseScore 4 implementation
 // See: https://github.com/Jojo-Schmitz/WalkingBass/tree/main
 // 
 // Restrictions / Assumptions / Checks
-// - 4/4 time
-// - Notes are in bass clef, from low E (28) with a 2.5 octave range
-// - Quarter notes walking only
 // - Requires a score to be open, and some bars with chords to be selected
 //
 // - If a chord lasts for just one beat, then the root will always be used
@@ -33,62 +29,72 @@ import Qt.labs.settings 1.0
 // - Optionally write the pattern being used below the first note
 // - Optionally turn the notes into slashes. Will still play as expected, but appear as a '/'
 // - Optionally also include patterns that don't start on the root (e.g. 3-2-1-a)
-//
-// - todo: Add patterns for 2 bars (8 beats) of the one chord... 
+// - optionally make a note into a skip (quavers) with the second one possibly a dead note (x)
+// 
+// ToDos / Ideas: 
+// - Multiple approach notes (to do enclosures etc.):  
+// - - 1-b-a-1 | 1... F | C == F - E  -Gb - Fd | C
+// - - 1-a-b-v | 1... F | C == F - Ab -Gb - G | C
 //
 // Change History
 // v1.0 - initial release
 // v1.1 - Fixed height of panel. Added octave jumps for x-x in a pattern
 // v1.2 - Added Support for MuseScore 4.x, as a dialog, 
-//      - 
-//
+// v4.4 - Restricted to MuseScore 4.4, due to Qt changes. 
+//      - Changed range to Lowest Pitch and Highest Pitch (instead of Lowest & Octave Range)
+//      - Added "skips" option to include quaver skip notes
+//      - Added 2 bar patterns
+//      - If a non-root note has an v approach note, then it changes to a or b for smoother walking
+// 
 //=============================================================================
 
 MuseScore 
 {
-  version: "1.2"
-  menuPath: "Plugins.WalkingBass"
+  version: "4.4"
+  
+  title: "WalkingBass"
   description: "This plug-in generates a walking bass line for given chord changes."
+  pluginType: "dialog"
+  thumbnailName: "WalkingBassIcon.png"
   
-  Component.onCompleted : {
-    if (mscoreMajorVersion >= 4) {
-      title = qsTr("Walking Bass");
-      thumbnailName = "WalkingBassIcon.png";
-      categoryCode = qsTr("PitDad Tools");
-    }
-  }
-  
-  pluginType: mscoreMajorVersion >= 4 ? "dialog" : "dock";
-  dockArea: "left";
-  implicitHeight: 480;
-  implicitWidth: 260;
+  implicitHeight: 350;
+  implicitWidth: 300;
  
 
 //=============================================================================
-// configuration options. These can be set in the UI
+// configuration options. 
+//
+// These can be set in the Main UI
   
-  property var lowestPitchText: "E1"      // E below C below C below middle C (concert)
-  property var lowestPitch: 28
-  property var octaveRange: 2.5          // octave range to use
-  property var flipPercent: 10            // percentage chance that the next note is 
-                                          // not the closest in the octave
-                                          
-  property bool includePatternText: true  // if true, then the current pattern is written beneath the first note
-  property bool useSlashes: false         // if true write notes as stemless slashes. if false, writes as actual notes
-  property bool useNonRootPatterns: false // if true use patterns that don't start on the root
-  property int  nonRootPercent: 10        // percentage to use non root patterns
-  property int  octavesPercent: 50        // when an interval is repeated in a pattern, 
-                                          // the percentage chance it will jump an octave
+  property var lowestPitchText: "E1"       // E below C below C below middle C (concert)
+  property int lowestPitch: 28
+
+  property var highestPitchText: "G3"       // E below C below C below middle C (concert)
+  property int highestPitch: 55
+
+  property bool useSlashes: false          // if true write notes as stemless slashes. if false, writes as actual notes
+  
+// These are set in the Config UI  
+  property var flipPercent: 5              // percentage chance that the next note is not the closest in the octave
+  property bool includePatternText: false  // if true, then the current pattern is written beneath the first note
+  property bool useNonRootPatterns: false  // if true use patterns that don't start on the root
+  property int  nonRootPercent: 5          // percentage to use non root patterns
+  property int  octavesPercent: 5          // when an interval is repeated in a pattern, the percentage chance it will jump an octave
+  property int  skipsPercent: 2            // how frequently to use a skip (insert as quavers)
                                           
 //=============================================================================
-// Layout
-//
+// Main UI Layout
+// 
+
   GridLayout 
   {
-    id: 'walkingBassMainLayout'
+    id: walkingBassMainLayout
     columns: 2
+    rowSpacing: 0
     anchors.fill: parent
-    anchors.margins: 10
+    anchors.leftMargin: 5
+    anchors.rightMargin: 5
+    
 
     Label 
     {
@@ -99,9 +105,9 @@ MuseScore
     TextField 
     {
       id: lowestPitchField
-      placeholderText: lowestPitchText
+      text: lowestPitchText
+      Layout.maximumWidth:60
       horizontalAlignment: TextInput.AlignRight
-      Keys.onReturnPressed: isValidLowestNote()
     }
       
     Label 
@@ -115,151 +121,275 @@ MuseScore
 
     Label 
     {
-      id: octaveRangeLabel
-      text: "Octave Range"
+      id: highestPitchLabel
+      text: "Highest Pitch"
     }
         
     TextField 
     {
-      id: octaveRangeField
-      implicitHeight: 24
-      placeholderText: octaveRange
+      id: highestPitchField
+      text: highestPitchText
+      Layout.maximumWidth:60
       horizontalAlignment: TextInput.AlignRight
-      Keys.onReturnPressed: isValidOctaveRange()
     }
-        
+      
     Label 
     {
-      id: octaveRangeLabelHelp
+      id: highestPitchFieldHelp
       Layout.columnSpan:2
       font.italic: true
-      text: "Range in octaves. Typically 2, 2.5 or 3"
+      text: "Highest pitch available, from C0 to B4.\n(Typically G3 to G4)"
       bottomPadding: 10
     }
 
-    Label 
-    {
-      id: flipPercentLabel
-      text: "Flip Percentage"
-    }
-      
-    TextField 
-    {
-      id: flipPercentField
-      implicitHeight: 24
-      placeholderText: flipPercent
-      horizontalAlignment: TextInput.AlignRight
-      Keys.onReturnPressed: isValidFlipPercent()
-    }
-      
-    Label 
-    {
-      id: flipPercentLabelHelp
-      Layout.columnSpan: 2
-      font.italic: true
-      text: "Percentage that a 3rd, 4th, 5th, or 6th\nis furthest not closest"
-      bottomPadding: 10
-    }
-
-    Label 
-    {
-      id: includePatternTextLabel
-      text: "Patterns Text"
-    }
-    
-    CheckBox 
-    {
-      id: includePatternTextCheck
-      checked: includePatternText
-    }
-      
-    Label 
-    {
-      id: includePatternTextHelp
-      Layout.columnSpan:2
-      font.italic: true
-      text: "Include the pattern text below the first note"
-      bottomPadding: 10
-    }
-    
-    Label 
-    {
-      id: useSlashesLabel
-      text: "Slashes"
-    }
-    
     CheckBox 
     {
       id: useSlashesCheck
+      Layout.columnSpan:2
+      text: "Write slashes instead of notes"
       checked: useSlashes
+      onClicked: { 
+        useSlashes = !useSlashes; 
+      }
     }
-      
-    Label 
+    
+    Row 
     {
-      id: useSlashesHelp
-      font.italic: true
-      bottomPadding: 10
-      text: "Use slashes instead of notes"
-      Layout.columnSpan:2
-    }
-
-    Label 
-    {
-      id: useNonRootPatternslabel
-      text: "Use non-root patterns (%)"
-    }        
-             
-    TextField 
-    {
-      id: nonRootPercentField
-      placeholderText: nonRootPercent
-      horizontalAlignment: TextInput.AlignRight
-      Keys.onReturnPressed: isValidNonRootPercent()
-    }
-      
-    Label
-    {
-      id: octavesPercentLabel
-      text: "Repeat-note Octaves (%)"
-    }        
-             
-    TextField 
-    {
-      id: octavesPercentField
-      placeholderText: octavesPercent
-      horizontalAlignment: TextInput.AlignRight
-      Keys.onReturnPressed: isValidOctavesPercent()
-    }
-        
-    Button 
-    {
-      id: applyButton
+      id: fillerRow
       Layout.columnSpan: 2
-      text: qsTranslate("PrefsDialogBase", "Apply")
-      onClicked: applyBassLine()
+      anchors.bottom: buttonsRow.top
+      bottomPadding: 50
+      
+      Label 
+      {
+        id: dummy
+        text: " "
+        bottomPadding: 10
+      }
     }
-        
-    Label 
+   
+    Row
     {
-      id: errorLabel
-      visible: false
-      Layout.columnSpan:2
+      id: buttonsRow
+      Layout.alignment: Qt.AlignBottom
+      Layout.columnSpan: 2
+      spacing: 5
+      bottomPadding: 5
+
+      RoundButton 
+      {
+        id: applyButton
+        text: qsTranslate("PrefsDialogBase", "Apply")
+        font.bold: true
+        radius: 5
+        onClicked: applyBassLine()
+      }
+      
+      RoundButton 
+      {
+        id: settingButton
+        text: qsTranslate("PrefsDialogBase", "Settings")
+        radius: 5
+        onClicked: settingsDialog.open()
+      }
+      
+      RoundButton 
+      {
+        id: aboutButton
+        text: "About"
+        radius: 5
+        onClicked: aboutDialog.open()
+      }
+    }
+  }    
+    
+//=============================================================================
+// Settings Dialog
+
+  Dialog {
+    id: settingsDialog
+    title: "WalkingBass Settings"
+    anchors.centerIn: parent
+    standardButtons: Dialog.Ok
+    
+    implicitWidth: Math.round(parent.width * 90 / 100)
+    implicitHeight: Math.round(parent.height * 90 / 100)
+    
+    Column {
+      id: contentColumn
+      //anchors.fill: parent
+      width: settingsDialog.implicitWidth
+      padding: 5
+    
+      
+      Grid {
+        id: contentGrid
+        columns: 2
+        spacing: 5
+
+        Label 
+        {
+          id: useNonRootPatternslabel
+          text: "Non-root patterns (%)"
+        }        
+                 
+        TextField 
+        {
+          id: nonRootPercentField
+          text: nonRootPercent
+          width: 40
+          horizontalAlignment: TextInput.AlignRight
+        }
+        
+        Label
+        {
+          id: octavesPercentLabel
+          text: "Repeat-note Octaves (%)"
+        }        
+                 
+        TextField 
+        {
+          id: octavesPercentField
+          text: octavesPercent
+          width: 40
+          horizontalAlignment: TextInput.AlignRight
+        }
+            
+        Label
+        {
+          id: skipsPercentageLabel
+          text: "Skips (%)"
+        }        
+
+        TextField 
+        {
+          id: skipsPercentField
+          text: skipsPercent
+          width: 40
+          horizontalAlignment: TextInput.AlignRight
+        }
+        
+        Label 
+        {
+          id: flipPercentLabel
+          text: "Flip (%)"
+          bottomPadding: 10
+        }
+          
+        TextField 
+        {
+          id: flipPercentField
+          width: 40
+          text: flipPercent
+          horizontalAlignment: TextInput.AlignRight
+        }
+      }
+      
+      Text 
+      {
+        id: flipPercentageLabelHelp
+        bottomPadding: 10
+        width: settingsDialog.contentItem.width
+        font.italic: true
+        text: "Percentage that a 3rd, 4th, 5th, or 6th is flipped from being closest."
+        wrapMode: Text.Wrap
+      }
+      
+      CheckBox 
+      {
+        id: includePatternTextCheck
+        width: contentColumn.width
+        checked: includePatternText
+        text: "Include the pattern text"
+        onClicked: { 
+          includePatternText = !includePatternText; 
+        }
+      }
     }
   }
+
+
+  
+//=============================================================================
+// About Dialog
+
+  property string aboutDialogText: "
+    <h3>WalkingBass</h3>
+    <p>
+    A MuseScore plugin that generates a walking bass line, given a set of chord changes
+    </p>
+    <p>
+    MIT License <br>
+    (C) 2022-2024 Phil Kan <br>
+    PitDad Music. All Rights Reserved. 
+    </p>
+    <p>
+    Help on <a href='https://github.com/philxan/WalkingBass/blob/main/README.md'>Github</a>
+    </p>
+  "
+  
+  property string linkText: "https://github.com/philxan/WalkingBass/blob/main/README.md"
+  
+  Dialog {
+    id: aboutDialog
+    title: "About WalkingBass"
+    anchors.centerIn: parent
+    standardButtons: Dialog.Ok 
+    implicitWidth: Math.round(parent.width * 90 / 100)
+    implicitHeight: Math.round(parent.height * 90 / 100)
+    
+    contentItem: Column {
+      
+      Rectangle {
+        id: aboutContentRectangle
+        color: "#ffffff"
+        width: aboutDialog.contentItem.width
+        height: aboutDialog.contentItem.height
+        
+          Text {
+            id: aboutTextControl
+            text: aboutDialogText
+            anchors.fill: parent
+            anchors.margins: 20
+            onLinkActivated: Qt.openUrlExternally(linkText)
+            wrapMode: Text.Wrap
+            textFormat: Text.StyledText
+            
+            MouseArea 
+            {
+              anchors.fill: parent
+              acceptedButtons: Qt.NoButton // we don't want to eat clicks on the Text
+              cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
+            }
+        }
+      }
+    }
+  }    
+  
     
 //=============================================================================
 
-  function isValidLowestNote()
+  function isValidNote(noteText, fieldName, sampleText)
   {
-    if (!(/^[A-G]{1}(b|#)?[0-4]{1}$/.test(lowestPitchField.text)) ) 
+    if (!(/^[A-G]{1}(b|#)?[0-4]{1}$/.test(noteText)) ) 
     {
-      inputError.text = "Lowest pitch must be a valid note & octave. e.g. E3"
-      inputError.open();
+      displayError(fieldName + " pitch must be a valid note & octave. (e.g. " + sampleText + ")");
+      return false;
     }
-   
-    parseLowestNote();
+    
+    return true;
   }
  
+  function isValidLowestNote()
+  {
+    return isValidNote(lowestPitchField.text, "Lowest", "E1");
+  }
+ 
+  function isValidHighestNote()
+  {
+    return isValidNote(highestPitchField.text, "Highest", "G3");
+  }
+
 //=============================================================================
 
   function parseLowestNote()
@@ -283,25 +413,27 @@ MuseScore
     
 //=============================================================================
 
-  function isValidOctaveRange()
-  {
-    if (!(/^(\d)*(\.)?([0-9]{1})?$/.test(octaveRangeField.text)) ) 
-    {
-      displayError("Octave Range must be a number from 0 to 4.");
-      return false;
-    }
+  function parseHighestNote()
+  {     
+    var idx = 0;
+    var adjustPitch = 0;
+   
+    var root = highestPitchField.text[idx].toUpperCase();
+    idx++;
 
-    octaveRange = parseFloat(octaveRangeField.text);
-   
-    if (octaveRange > 4)
+    // could be #or b as well.. 
+    if ('#b'.includes(highestPitchField.text[idx]))
     { 
-      displayError("Octave Range must be a number from 0 to 4.");
-      return false;
-    }
-   
-    return true;
+      adjustPitch = highestPitchField.text[idx] == "b" ? -1 : 1; 
+      idx++; 
+    } 
+
+    var octave = parseInt(highestPitchField.text[idx]);
+    highestPitch = c0 + (12 * octave) + letterToSemitone[root] + adjustPitch;
   }
-    
+
+//=============================================================================
+
   function isValidFlipPercent()
   {
     if (! (/^\d+$/.test(flipPercentField.text) )) 
@@ -359,6 +491,25 @@ MuseScore
    
     return true;
   }
+
+  function isValidSkipsPercent()
+  {
+    if (! (/^\d+$/.test(skipsPercentField.text)) ) 
+    {
+      displayError("Not a valid skips percentage.\nUse a whole number between 0 and 100 ");
+      return false;
+    }
+   
+    skipsPercent = parseInt(skipsPercentField.text);
+   
+    if (skipsPercent < 0 || skipsPercent > 100) 
+    {
+      displayError("Not a valid flip percentage 2.\nUse a whole number between 0 and 100 ");
+      return false;
+    }
+   
+    return true;
+  }
    
 //=============================================================================
 
@@ -386,7 +537,7 @@ MuseScore
     id: versionError
     visible: false
     title: qsTr("Unsupported MuseScore Version")
-    text: qsTr("This plugin needs MuseScore 3.3 or later")
+    text: qsTr("This plugin requires MuseScore 4.4 or later")
     onAccepted: {
       Qt.quit() 
     }
@@ -395,7 +546,7 @@ MuseScore
 //=============================================================================
 
   // internal globals
-  property int highestPitch: lowestPitch + (12 * octaveRange);
+  // property int highestPitch: lowestPitch + (12 * octaveRange);
 
   // based on the major scale
   property var intervalToSemitone: {'1':0, '2':2, '3':4, '4':5, '5':7, '6':9, '7':11};
@@ -426,8 +577,7 @@ MuseScore
   
   property var patterns:
   [ 
-  
-    "1-a-3-1", "1-a-3-5", "1-a-3-a", "1-a-3-b", "1-a-3-v", 
+    "1-b-3-1", "1-b-3-5", "1-b-3-a", "1-b-3-b", "1-b-3-v", 
     "1-b-2-1", "1-b-2-3", "1-b-2-a", "1-b-2-b", "1-b-2-v",
     "1-1-3-5", "1-1-3-a", "1-1-3-b", "1-1-3-v",
     "1-1-5-1", "1-1-5-3", "1-1-5-5", "1-1-5-a", "1-1-5-b", "1-1-5-v",
@@ -448,13 +598,25 @@ MuseScore
   
   property var patternsNonRoot:
   [
-    "3-2-1-1", "3-2-1-5", "3-2-1-7", "3-2-1-a", "3-2-1-b", "3-2-1-v",
-    "3-5-1-1", "3-5-1-5", "3-5-1-7", "3-5-1-a", "3-5-1-b", "3-5-1-v",
-    "3-7-1-1", "3-7-1-5", "3-7-1-7", "3-7-1-a", "3-7-1-b", "3-7-1-v", 
-    "3-a-1-1", "3-a-1-5", "3-a-1-7", "3-a-1-a", "3-a-1-b", "3-a-1-v", 
-    "3-b-1-1", "3-b-1-5", "3-b-1-7", "3-b-1-a", "3-b-1-b", "3-b-1-v",
-    "5-3-1-1", "5-3-1-5", "5-3-1-7", "5-3-1-a", "5-3-1-b", "5-3-1-v",
+    "3-2-1-5", "3-2-1-7", "3-2-1-a", "3-2-1-b", "3-2-1-v",
+    "3-5-1-5", "3-5-1-7", "3-5-1-a", "3-5-1-b", "3-5-1-v",
+    "3-7-1-5", "3-7-1-7", "3-7-1-a", "3-7-1-b", "3-7-1-v", 
+    "3-a-1-5", "3-a-1-7", "3-a-1-a", "3-a-1-b", "3-a-1-v", 
+    "3-b-1-5", "3-b-1-7", "3-b-1-a", "3-b-1-b", "3-b-1-v",
+    "5-3-1-5", "5-3-1-7", "5-3-1-a", "5-3-1-b", "5-3-1-v",
+    "5-4-3-1", "5-4-3-a", "5-4-3-b", "5-4-3-v", 
+    "5-6-7-1", "5-6-7-a", "5-6-7-b", "5-6-7-v", 
+    "5-7-1-a", "5-7-1-b", "5-7-1-v", 
   ]  
+  
+  property var patterns2Bars:
+  [
+    "1-2-3-4-5-6-7-1", "1-2-3-4-5-6-7-a", "1-2-3-4-5-6-7-b", "1-2-3-4-5-6-7-v",
+    "1-3-2-4-3-5-4-7", "1-3-2-4-3-5-4-a", "1-3-2-4-3-5-4-b", "1-3-2-4-3-5-4-v",
+    "1-7-6-a-5-4-3-1", "1-7-6-a-5-4-3-a", "1-7-6-a-5-4-3-b", "1-7-6-a-5-4-3-v",
+    "1-7-6-a-5-3-2-1", "1-7-6-a-5-3-2-a", "1-7-6-a-5-3-2-b", "1-7-6-a-5-3-2-v",
+    "1-6-7-a-5-3-4-5", "1-6-7-a-5-3-4-a", "1-6-7-a-5-3-4-b", "1-6-7-a-5-3-4-v",
+  ]
   
   property int quarterNoteDuration: division;
 
@@ -483,28 +645,25 @@ MuseScore
 
   function applyBassLine()
   {
-    errorLabel.text = "";
-    errorLabel.visible = false;
-  
     var cursor = getCursor();
     
     if (!cursor.segment )        // no selection
     { 
-      console.log("Error: Nothing is selected.")
-      errorLabel.text = "Error: Nothing is selected.\nPlease select one staff of bars with chords";
-      errorLabel.visible = true;
+console.log("Error: Nothing is selected.")
+      displayError("Error: Nothing is selected.\nPlease select one staff of bars with chords");
       return;
     }
     
     if (curScore.selection.endStaff - curScore.selection.startStaff > 1)
     {
-      console.log("More than one staff selected")    
-      errorLabel.text = "Error: More than one staff is selected\nPlease select only one staff, with chords";
-      errorLabel.visible = true;
+console.log("More than one staff selected")    
+      displayError("Error: More than one staff is selected\nPlease select only one staff, with chords");
       return;
     }
     
-    if (!isValidOctaveRange()) return;
+    if (!isValidLowestNote()) return;
+    if (!isValidHighestNote()) return;
+    
     if (!isValidOctavesPercent()) return;
     if (!isValidNonRootPercent()) return;
     
@@ -513,15 +672,15 @@ MuseScore
     approachTick = 0;  
 
     parseLowestNote();
+    parseHighestNote();
     
-    octaveRange = parseFloat(octaveRangeField.text);
-    highestPitch = lowestPitch + (12 * octaveRange);   
     flipPercent = parseInt(flipPercentField.text);
 
     includePatternText = includePatternTextCheck.checked;
     useSlashes = useSlashesCheck.checked;
     nonRootPercent = parseInt(nonRootPercentField.text);
-    
+    skipsPercent = parseInt(skipsPercentField.text);
+
     // a random starting point
     previousPitch = lowestPitch + Math.floor(Math.random() * (highestPitch - lowestPitch));
     
@@ -558,7 +717,7 @@ console.log("----------------------------------------");
     var idx = 0;
     if ("()".includes(chord[idx])) idx++; // just ignore brackets!
 
-    console.log(idx + " - " + chord + " - " + chord[idx])
+console.log(idx + " - " + chord + " - " + chord[idx])
 
     var root = chord[idx].toUpperCase();
     idx++;
@@ -676,12 +835,12 @@ console.log("----------------------------------------");
   // get a random pattern to use, based on the number of quarter notes required
   function getPattern(quarterNotes)
   {
-    var nonRoot = (Math.random() * 100) < nonRootPercent
-    
     if (quarterNotes == 1)
     {
       return "1";
     }
+    
+    var nonRoot = (Math.random() * 100) < nonRootPercent
     
     if (quarterNotes == 2)
     {
@@ -691,7 +850,12 @@ console.log("----------------------------------------");
         patterns2[Math.floor(Math.random() * patterns2.length)] 
     }
     
-    // for anything else, just return 4 at a time
+    if (quarterNotes == 8)
+    {
+        return patterns2Bars[Math.floor(Math.random() * patterns2Bars.length)];
+    }
+    
+    // for anything else, just return a 4 bar pattern
     return nonRoot ?
       patternsNonRoot[Math.floor(Math.random() * patternsNonRoot.length)] :
       patterns[Math.floor(Math.random() * patterns.length)];
@@ -711,12 +875,41 @@ console.log("----------------------------------------");
       var chordSymbols = findAllChordSymbols(segment, selectedStaff, endTick);
       chordSymbols.sort(compareChordSymbols);
       
+// to support 2 bar patterns, go through the sorted chords list, and create a new, condensed list
+// add the first one to the newList
+// for every other one:
+// -- if its the same as last one, then add the durations up, and skip adding this one      
+
+      var collatedChords = [];
+      collatedChords.push(chordSymbols[0]);
+      for (var i = 1; i < chordSymbols.length; i++)
+      {
+        // if not the same chordSymbol, then add it and move on
+        if (collatedChords[collatedChords.length-1].text != chordSymbols[i].text)
+        {
+          collatedChords.push(chordSymbols[i]);
+          continue;
+        }      
+
+        // if the sum of the two durations is 8, at a 50% chance make it a 2 bar pattern
+        if (((collatedChords[collatedChords.length-1].duration + chordSymbols[i].duration) / quarterNoteDuration == 8)
+              && (Math.random() *100 < 50))
+        {
+          collatedChords[collatedChords.length-1].duration = quarterNoteDuration * 8;
+          continue;
+        }
+        
+        // otherwise, just add it, and move on 
+        collatedChords.push(chordSymbols[i]);
+      }
+      
       previousPitch = -1;
 
       cursor.setDuration(1, 4);
-      for (var c in chordSymbols)
+      
+      for (var c in collatedChords)
       {
-        addNotes(cursor, chordSymbols[c]);
+        addNotes(cursor, collatedChords[c]);
       }    
   }
   
@@ -768,6 +961,8 @@ console.log("----------------------------------------");
     for (var i in chords) 
     {
         var chord = chords[i];
+        
+        // set the duration on the previous chord
         if (result.length > 0) 
         {
           result[result.length - 1].duration = chord.tick - result[result.length - 1].tick;
@@ -844,14 +1039,6 @@ console.log(chordSymbol.text + ":"
         // adjust the note octave so its the closest one to the previous note
         notePitch = adjustPitchToBeClosestToPreviousPitch(notePitch, previousPitch)
 
-        // if this is the first note in the pattern, and there is no approach note
-        // then avoid duplicating the previous pitch
-        // this works by moving the previous pitch up or down
-        //if (j == 0 && (approachPattern == "")) 
-        //{
-        //  avoidFirstNoteIdenticalToLastNote(notePitch, previousPitch, cursor)
-        //}
-
         // if we're duplicating a note, then, 
         // if this is the first note of the pattern, then adjust the last note of last pattern
         // otherwise scale it an octave as specified in the options
@@ -874,7 +1061,7 @@ console.log(chordSymbol.text + ":"
         // this might change the actual note, if its at the top or bottom of the range
         if (approachPattern != "") 
         {
-          notePitch = insertApproachNote (notePitch, chord.triad, cursor)
+          notePitch = insertApproachNote (notePitch, chord.triad, pattern[j], cursor)
           approachPattern = "";
         }
 
@@ -1004,7 +1191,7 @@ console.log(chordSymbol.text + ":"
     {
       // our very first note! Let's make it a good one!
       // choose a random octave to start in - but not too high!
-      newPitch += Math.floor(Math.random() * octaveRange - 1) * 12     
+      newPitch += Math.floor(Math.random() * (highestPitch - lowestPitch)/12) * 12     
       return newPitch;
     }
 
@@ -1036,10 +1223,10 @@ console.log(chordSymbol.text + ":"
   // by pushing up or down octaves
   function ensurePitchIsInRange(notePitch)
   {
-        while (highestPitch < notePitch) notePitch -=12;
-        while (notePitch < lowestPitch) notePitch += 12;
-        
-        return notePitch;
+    while (highestPitch < notePitch) notePitch -=12;
+    while (notePitch < lowestPitch) notePitch += 12;
+    
+    return notePitch;
   }
   
 //=============================================================================
@@ -1050,16 +1237,16 @@ console.log(chordSymbol.text + ":"
   // but that's more ok. 
   function avoidFirstNoteIdenticalToLastNote(notePitch, previousPitch, cursor) 
   {
-        // if this is the first note in the pattern, and there isn't an approach pitch
-        // and its the same pitch as the previous note, then adjust the previous note
-        if (previousPitch == notePitch)
-        {
-            var upOrDown = Math.floor(Math.random() * 2); 
-            if(upOrDown == 0) upOrDown = -1;                // so either -1 or 1
-            
-            cursor.rewindToTick(cursor.tick - quarterNoteDuration);
-            addNote(cursor, previousPitch + upOrDown);      // replaces the previous note
-        }
+    // if this is the first note in the pattern, and there isn't an approach pitch
+    // and its the same pitch as the previous note, then adjust the previous note
+    if (previousPitch == notePitch)
+    {
+        var upOrDown = Math.floor(Math.random() * 2); 
+        if(upOrDown == 0) upOrDown = -1;                // so either -1 or 1
+        
+        cursor.rewindToTick(cursor.tick - quarterNoteDuration);
+        addNote(cursor, previousPitch + upOrDown);      // replaces the previous note
+    }
   }
   
 //=============================================================================
@@ -1067,51 +1254,58 @@ console.log(chordSymbol.text + ":"
   // modify the previous note to be the current approachPattern
   // the targetTriad is used to ensure that any 'v' approaches follow the adjustments
   // of the chord being moved to (e.g a flat 5 is used to approach a half-diminished)
-  function insertApproachNote(notePitch, targetTriad, cursor)
+  function insertApproachNote(notePitch, targetTriad, targetInterval, cursor)
   {
-      if (approachPattern == "") return;
+    if (approachPattern == "") return;
+    
+    // if its 'v' approach, but to the non-root, then just use a or b instead
+    // this is for smoother walking
+    if (approachPattern == "v" && (targetInterval != "1"))
+    {
+      approachPattern = (Math.random() * 100) < 50 ? "a" : "b";
+    }
 
-      var approachNotePitch = notePitch + approachSemitones[approachPattern];
-      
-      var currentCursorTick = cursor.tick;
-      cursor.rewind(cursor.tick - quarterNoteDuration);
-      
-      var noteBeforeApproachPitch = notes[notes.length-1];
-      
-      cursor.rewind(currentCursorTick);
-      
-      // if approach is a 'v' - the Fifth of the target chord
-      // we might need to adjust it to be a flat 5 (half dim, diminished), or sharp 5 (augmented)
-      if (approachPattern == "v")  
-      {
-        approachNotePitch = adjustPitchToChordQuality(approachNotePitch, "5", targetTriad, cursor);
-      }
-      
-      approachNotePitch = adjustPitchToBeClosestToPreviousPitch(approachNotePitch, noteBeforeApproachPitch)
-      notePitch = adjustPitchToBeClosestToPreviousPitch(notePitch, approachNotePitch)
-      
-      // if we're trying to approach the lowest note from below, just push them both up the octave
-      if (approachNotePitch < lowestPitch || notePitch < lowestPitch)
-      {
-        approachNotePitch += 12
-        notePitch += 12;
-      }
+    var approachNotePitch = notePitch + approachSemitones[approachPattern];
+    
+    var currentCursorTick = cursor.tick;
+    cursor.rewind(cursor.tick - quarterNoteDuration);
+    
+    var noteBeforeApproachPitch = notes[notes.length-1];
+    
+    cursor.rewind(currentCursorTick);
+    
+    // if approach is a 'v' - the Fifth of the target chord
+    // we might need to adjust it to be a flat 5 (half dim, diminished), or sharp 5 (augmented)
+    if (approachPattern == "v")  
+    {
+      approachNotePitch = adjustPitchToChordQuality(approachNotePitch, "5", targetTriad, cursor);
+    }
+    
+    approachNotePitch = adjustPitchToBeClosestToPreviousPitch(approachNotePitch, noteBeforeApproachPitch)
+    notePitch = adjustPitchToBeClosestToPreviousPitch(notePitch, approachNotePitch)
+    
+    // if we're trying to approach the lowest note from below, just push them both up the octave
+    if (approachNotePitch < lowestPitch || notePitch < lowestPitch)
+    {
+      approachNotePitch += 12
+      notePitch += 12;
+    }
 
-      // likewise for trying to approach the highestPitch from above
-      if (approachNotePitch > highestPitch || notePitch > highestPitch)
-      {
-        approachNotePitch -= 12
-        notePitch -= 12;
-      }
+    // likewise for trying to approach the highestPitch from above
+    if (approachNotePitch > highestPitch || notePitch > highestPitch)
+    {
+      approachNotePitch -= 12
+      notePitch -= 12;
+    }
 
-      cursor.rewindToTick(approachTick);
-      addNote(cursor, approachNotePitch);
-      notes.push(approachNotePitch);
+    cursor.rewindToTick(approachTick);
+    addNote(cursor, approachNotePitch);
+    notes.push(approachNotePitch);
 
-      approachPattern = "";  // no approachPitch needed anymore
-      approachTick = -1;
-      
-      return notePitch;
+    approachPattern = "";  // no approachPitch needed anymore
+    approachTick = -1;
+    
+    return notePitch;
   }
   
   
@@ -1145,24 +1339,51 @@ console.log(chordSymbol.text + ":"
   // helper to add notes
   function addNote(cursor, pitch)
   {
-    var beforeTick = cursor.tick;
-    cursor.addNote(pitch, false);
+    var useSkip = (Math.random() * 100) < skipsPercent;
       
-    // transform it into a slash if required
-    if (useSlashes)
+    // if using a skip, then insert 8th notes, otherwise a quarter note   
+    cursor.setDuration(1, useSkip ? 8 : 4);
+    
+    // if skipping, then add the same note twice
+    for (var num = 0; num < (useSkip ? 2 : 1); num++) 
     {
-      var cursorTick = cursor.tick;
-      cursor.rewindToTick(beforeTick);
-      
-      if (cursor.element.type == Element.CHORD) 
-      {
-        cursor.element.noStem = true;
-            
+      cursor.addNote(pitch);         // add a note!
+      var changeSkipHeadToCross = (Math.random() * 100) < 50;
+
+      // if its the skip note, then 50% of the time set the notehead to an x
+      if (num == 1 && changeSkipHeadToCross) {
+        cursor.prev();
         var notes = cursor.element.notes;
-        for (var i = 0; i < notes.length; i++)
-        {
-          var note = notes[i];
+        var note = notes[0];
+        note.headGroup = NoteHeadGroup.HEAD_CROSS;
+        cursor.next();
+      }
+      
+      // transform it into a slash if required
+      if (!useSlashes) continue;
+
+      cursor.prev();
+      if (cursor.element.type != Element.CHORD) continue
+      
+      cursor.element.noStem = true;
+      cursor.element.beamMode = Beam.NONE;
+      
+      var notes = cursor.element.notes;
+      for (var i = 0; i < notes.length; i++)
+      {
+        var note = notes[i];
         
+        // the skip notes just need to be made entirely invisible
+        if (useSkip && (num > 0))
+        {
+          note.visible = false;
+          for (var j = 0; j < note.elements.length; j++)
+          {
+            note.elements[j].visible = false;
+          }
+        }
+        else 
+        {
           note.fixed = true;
           note.fixedLine = 4;
           note.headScheme = NoteHeadScheme.HEAD_AUTO
@@ -1170,8 +1391,14 @@ console.log(chordSymbol.text + ":"
           note.headType = NoteHeadType.HEAD_AUTO
         }
       }
-      cursor.rewindToTick(cursorTick);
+      cursor.next();
+            
     }
+    
+    if (useSkip)
+    {
+      cursor.setDuration(1,4);
+    }   
   }
   
 //=============================================================================
@@ -1231,40 +1458,26 @@ console.log(chordSymbol.text + ":"
     approachTick = 0; 
     
     lowestPitchField.text = lowestPitchText;
-    octaveRangeField.text = octaveRange;
+    highestPitchField.text = highestPitchText;
     flipPercentField.text = flipPercent;
     
-    includePatternTextCheck.checked = includePatternText;
-    useSlashesCheck.checked = useSlashes;
     nonRootPercentField.text = nonRootPercent;
     octavesPercentField.text = octavesPercent;
+    skipsPercentField.text = skipsPercent;
+    
   }  
 
 //=============================================================================
 
   onRun: 
   {
-    if (!   // MS 3.3 & higher, and MS 4.x are all supported. 
-      ((mscoreMajorVersion == 3 && mscoreMinorVersion >= 3) ||
-       (mscoreMajorVersion == 4)
-       ))
+    if ((mscoreMajorVersion < 4) || ((mscoreMajorVersion == 4 && mscoreMinorVersion < 3 ))) 
     {
       versionError.open()
-      
-      if (typeof(quit) === 'undefined') 
-      { 
-        Qt.quit() 
-      }
-      else 
-      { 
-        quit() 
-      }
-      
+      (typeof(quit) === 'undefined' ? Qt.quit : quit)()
       return;
     }
-    
-    console.log("WalkingBass docked plugin onRun.")
-    
+ 
     setDefaults();
   }
 }
