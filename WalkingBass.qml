@@ -316,7 +316,7 @@ MuseScore
   property string aboutDialogText: "
     <h3>WalkingBass</h3>
     <p>
-    A MuseScore plugin that generates a walking bass line, given a set of chord changes
+    A MuseScore Studio plugin that generates a walking bass line, given a set of chord changes
     </p>
     <p>
     MIT License <br>
