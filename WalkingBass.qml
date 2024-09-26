@@ -1471,7 +1471,7 @@ console.log(chordSymbol.text + ":"
 
   onRun: 
   {
-    if ((mscoreMajorVersion < 4) || ((mscoreMajorVersion == 4 && mscoreMinorVersion < 3 ))) 
+    if ((mscoreMajorVersion < 4) || ((mscoreMajorVersion == 4 && mscoreMinorVersion < 4 ))) 
     {
       versionError.open()
       (typeof(quit) === 'undefined' ? Qt.quit : quit)()
