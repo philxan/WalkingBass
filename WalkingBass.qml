@@ -324,11 +324,11 @@ MuseScore
     PitDad Music. All Rights Reserved. 
     </p>
     <p>
-    Help on <a href='https://github.com/philxan/WalkingBass/blob/main/README.md'>Github</a>
+    Help on <a href='https://github.com/philxan/WalkingBass/blob/MS-v4.4/README.md'>Github</a>
     </p>
   "
   
-  property string linkText: "https://github.com/philxan/WalkingBass/blob/main/README.md"
+  property string linkText: "https://github.com/philxan/WalkingBass/blob/MS-v4.4/README.md"
   
   Dialog {
     id: aboutDialog
